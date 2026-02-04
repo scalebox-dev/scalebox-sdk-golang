@@ -1,0 +1,284 @@
+# Scalebox Go SDK - Cursor Rules
+
+## 项目概述
+
+这是一个 Scalebox API 的 Go SDK 客户端库，提供类型安全的 API 访问接口。
+
+- **模块名**: `github.com/scalebox/scalebox-sdk-golang`
+- **Go 版本**: 1.21+
+- **架构**: 分层架构（客户端层、模型层、API 层）
+
+## 代码风格和约定
+
+### 命名约定
+
+- **包名**: 小写，单数形式（`client`, `models`, `sandboxes`）
+- **导出类型**: 大驼峰（`Client`, `Sandbox`, `CreateSandboxRequest`）
+- **导出函数**: 大驼峰（`NewClient`, `Create`, `Get`）
+- **未导出**: 小驼峰（`doRequest`, `parseResponse`）
+- **常量**: 大写下划线（`ErrNotFound`, `ErrUnauthorized`）
+- **接口名**: 通常以 `-er` 结尾（如 `Reader`, `Writer`），但本项目主要使用结构体
+
+### 文件组织
+
+```
+client/          # HTTP 客户端基础包
+models/          # 数据模型包
+api/            # API 客户端包
+  └── sandboxes/ # 特定 API 组
+examples/       # 示例代码
+```
+
+### 包职责
+
+- **`client`**: HTTP 请求处理、错误处理、认证
+- **`models`**: 所有数据结构定义（请求、响应、选项）
+- **`api/sandboxes`**: Sandboxes API 的具体实现
+- **`examples`**: 使用示例和演示代码
+
+## 架构模式
+
+### 分层架构
+
+```
+examples (使用层)
+    ↓
+api/sandboxes (API 层)
+    ↓
+client (HTTP 层)
+    ↓
+models (数据层)
+```
+
+### 依赖规则
+
+- `api/*` 可以依赖 `client` 和 `models`
+- `client` 只依赖标准库
+- `models` 只依赖标准库（`time`）
+- `examples` 可以依赖所有包
+- **禁止循环依赖**
+
+### 错误处理模式
+
+```go
+// 统一使用 client.APIError
+if err != nil {
+    if apiErr, ok := err.(*client.APIError); ok {
+        // 处理 API 错误
+    }
+}
+
+// 使用辅助函数检查错误类型
+if client.IsNotFound(err) {
+    // 处理 404
+}
+```
+
+## 代码规范
+
+### 结构体定义
+
+- 所有字段必须有 JSON 标签
+- 可选字段使用指针类型（`*string`, `*int`, `*bool`）
+- 时间字段使用 `time.Time` 或 `*time.Time`
+- 添加字段注释说明用途
+
+```go
+type Sandbox struct {
+    SandboxID string `json:"sandbox_id"`
+    Name      string `json:"name"`
+    Status    string `json:"status"`
+    // 可选字段使用指针
+    Description *string `json:"description,omitempty"`
+    // 时间字段
+    CreatedAt   time.Time  `json:"created_at"`
+    StartedAt   *time.Time `json:"started_at,omitempty"`
+}
+```
+
+### API 客户端方法
+
+- 所有方法接受 `context.Context` 作为第一个参数
+- 方法名使用动词（`Create`, `Get`, `List`, `Update`, `Delete`）
+- 返回类型：`(*Model, error)` 或 `(*Response, error)`
+- 错误必须包装上下文信息
+
+```go
+func (c *Client) Create(ctx context.Context, req models.CreateSandboxRequest) (*models.Sandbox, error) {
+    // 实现
+}
+```
+
+### 请求和响应
+
+- 请求结构体以 `Request` 结尾（`CreateSandboxRequest`）
+- 响应结构体以 `Response` 结尾（`SandboxListResponse`）
+- 选项结构体以 `Options` 结尾（`ListSandboxesOptions`）
+
+### 查询参数处理
+
+- 使用 `map[string]string` 传递查询参数
+- 空值不添加到查询参数中
+- 数字类型转换为字符串
+
+```go
+queryParams := make(map[string]string)
+if opts.Limit > 0 {
+    queryParams["limit"] = strconv.Itoa(opts.Limit)
+}
+```
+
+## 测试要求
+
+### 测试文件命名
+
+- 测试文件以 `_test.go` 结尾
+- 测试函数以 `Test` 开头
+- 使用表驱动测试（如果适用）
+
+### 测试结构
+
+```go
+func TestCreate(t *testing.T) {
+    // 1. 设置测试服务器
+    server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        // 验证请求
+        // 返回模拟响应
+    }))
+    defer server.Close()
+    
+    // 2. 创建客户端
+    baseClient := client.NewClient(server.URL, "test-api-key")
+    sandboxClient := NewClient(baseClient)
+    
+    // 3. 执行测试
+    result, err := sandboxClient.Create(context.Background(), req)
+    
+    // 4. 验证结果
+    if err != nil {
+        t.Fatalf("Create failed: %v", err)
+    }
+    // 断言...
+}
+```
+
+### 测试覆盖率目标
+
+- 核心功能（API 方法）：80%+
+- 错误处理：100%
+- 边界情况：尽可能覆盖
+
+## 文档要求
+
+### 代码注释
+
+- 所有导出的类型、函数、方法必须有注释
+- 注释以类型/函数名开头
+- 使用完整的句子
+
+```go
+// Create creates a new sandbox from the template.
+// It returns the created sandbox or an error if the request fails.
+func (c *Client) Create(ctx context.Context, req models.CreateSandboxRequest) (*models.Sandbox, error) {
+    // ...
+}
+```
+
+### README 要求
+
+- 包含快速开始示例
+- 列出所有主要 API 方法
+- 提供错误处理示例
+- 说明如何安装和使用
+
+## 错误处理
+
+### 错误类型
+
+- 使用 `client.APIError` 表示 API 错误
+- 包含状态码和错误消息
+- 提供错误检查辅助函数
+
+### 错误返回
+
+- 所有可能失败的操作都返回 `error`
+- 错误信息应该清晰、有用
+- 不要吞掉错误，要传播或记录
+
+## 新增功能指南
+
+### 添加新的 API 端点
+
+1. 在 `models/requests.go` 中添加请求结构体
+2. 在 `models/sandbox.go` 或相应模型文件中添加响应结构体
+3. 在 `api/sandboxes/client.go` 中添加方法
+4. 在 `api/sandboxes/client_test.go` 中添加测试
+5. 在 `examples/main.go` 中添加使用示例
+6. 更新 `README.md` 文档
+
+### 添加新的 API 组
+
+1. 创建 `api/{group}/` 目录
+2. 创建 `api/{group}/client.go` 文件
+3. 实现 `NewClient()` 函数和 API 方法
+4. 创建 `api/{group}/client_test.go` 测试文件
+5. 在 `examples/` 中添加示例
+
+## 代码审查检查清单
+
+- [ ] 所有导出的符号都有注释
+- [ ] 错误处理完整且有意义
+- [ ] 测试覆盖核心功能
+- [ ] 遵循命名约定
+- [ ] 没有循环依赖
+- [ ] 代码格式正确（`go fmt`）
+- [ ] 通过所有测试
+- [ ] 更新了相关文档
+
+## 禁止事项
+
+- ❌ 不要使用 `panic`（除非是程序错误）
+- ❌ 不要忽略错误（使用 `_`）
+- ❌ 不要使用全局变量
+- ❌ 不要在包之间创建循环依赖
+- ❌ 不要使用 `interface{}`（使用具体类型或泛型）
+- ❌ 不要在公共 API 中暴露实现细节
+
+## 性能考虑
+
+- 使用 `context.Context` 支持取消和超时
+- HTTP 客户端应该可配置（超时、重试等）
+- 避免不必要的内存分配
+- 大文件使用流式处理（如果适用）
+
+## 版本兼容性
+
+- 保持向后兼容性
+- 废弃的 API 使用 `// Deprecated:` 注释
+- 重大变更需要更新主版本号
+
+## 常用命令
+
+```bash
+# 格式化代码
+go fmt ./...
+
+# 运行测试
+go test ./... -v
+
+# 测试覆盖率
+go test ./... -cover
+
+# 构建
+go build ./...
+
+# 检查代码
+go vet ./...
+```
+
+## 参考资源
+
+- Go 官方文档: https://go.dev/doc/
+- Go 代码审查注释: https://github.com/golang/go/wiki/CodeReviewComments
+- 项目结构文档: `STRUCTURE.md`
+- API 接口文档: `REQUIRED_INTERFACES.md`
