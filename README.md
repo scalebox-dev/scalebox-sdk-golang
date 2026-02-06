@@ -239,22 +239,31 @@ go test ./api/sandboxes/... -cover
 
 集成测试连接到真实的 API 服务器，验证 SDK 与真实环境的集成。
 
-**位置**: `integration/sandboxes_test.go`
+**位置**: `integration_test/sandboxes_test.go`
 
 **前置条件**:
-需要设置环境变量：
+需要设置环境变量（二选一即可）：
+
+**方式一：使用 .env 文件（推荐）**
+在项目根目录或 `integration_test/` 目录下创建 `.env` 文件：
 ```bash
-export SCALEBOX_BASE_URL="https://api.scalebox.com"  # 或你的测试环境 URL
+SCALEBOX_BASE_URL=https://api.scalebox.com
+SCALEBOX_API_KEY=your-api-key-here
+```
+
+**方式二：使用环境变量**
+```bash
+export SCALEBOX_BASE_URL="https://api.scalebox.com"
 export SCALEBOX_API_KEY="your-api-key-here"
 ```
 
 **运行方式**:
 ```bash
 # 运行所有集成测试
-go test -tags integration ./integration/... -v
+go test -tags integration ./integration_test/... -v
 
 # 运行特定的集成测试
-go test -tags integration ./integration/... -v -run TestIntegrationCreateSandbox
+go test -tags integration ./integration_test/... -v -run TestIntegrationCreateSandbox
 ```
 
 **特点**:
@@ -266,19 +275,19 @@ go test -tags integration ./integration/... -v -run TestIntegrationCreateSandbox
 - ⚠️ 可能受外部服务影响
 
 **注意事项**:
-- 可将 `SCALEBOX_BASE_URL`、`SCALEBOX_API_KEY` 写在项目根或 `integration/` 下的 `.env` 中，集成测试会自动加载，无需每次 `source .env`。**请勿将 `.env` 提交到远端仓库**（已加入 `.gitignore`）。
+- 可将 `SCALEBOX_BASE_URL`、`SCALEBOX_API_KEY` 写在项目根或 `integration_test/` 下的 `.env` 中，集成测试会自动加载，无需每次 `source .env`。**请勿将 `.env` 提交到远端仓库**（已加入 `.gitignore`）。
 - 如果环境变量未设置，集成测试会自动跳过
 - 集成测试会自动清理创建的测试资源
 - 建议在独立的测试环境中运行，避免影响生产环境
 
-**详细说明**: 查看 [integration/README.md](integration/README.md) 了解更多信息。
+**详细说明**: 查看 [integration_test/README.md](integration_test/README.md) 了解更多信息。
 
 ### 测试对比
 
 | 特性 | 单元测试 | 集成测试 |
 |------|---------|---------|
-| **位置** | `api/sandboxes/client_test.go` | `integration/sandboxes_test.go` |
-| **运行命令** | `go test ./api/sandboxes/...` | `go test -tags integration ./integration/...` |
+| **位置** | `api/sandboxes/client_test.go` | `integration_test/sandboxes_test.go` |
+| **运行命令** | `go test ./api/sandboxes/...` | `go test -tags integration ./integration_test/...` |
 | **HTTP 服务器** | 模拟 (`httptest`) | 真实 API 服务器 |
 | **网络要求** | 不需要 | 需要 |
 | **运行速度** | 快 | 较慢 |
