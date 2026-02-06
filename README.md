@@ -303,4 +303,4 @@ go test -tags integration ./integration_test/... -v -run TestIntegrationCreateSa
 
 ## 许可证
 
-[添加许可证信息]
+本项目采用 [MIT License](LICENSE) 许可证。
