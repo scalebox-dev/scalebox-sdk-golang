@@ -24,7 +24,7 @@ func NewClient(baseClient *client.Client) *Client {
 
 // Create creates a new sandbox
 func (c *Client) Create(ctx context.Context, req models.CreateSandboxRequest) (*models.Sandbox, error) {
-	resp, err := c.baseClient.DoRequest(ctx, "POST", "/api/v1/sandboxes", req, nil)
+	resp, err := c.baseClient.DoRequest(ctx, "POST", "/v1/sandboxes", req, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +67,7 @@ func (c *Client) List(ctx context.Context, opts *models.ListSandboxesOptions) (*
 		}
 	}
 
-	resp, err := c.baseClient.DoRequest(ctx, "GET", "/api/v1/sandboxes", nil, queryParams)
+	resp, err := c.baseClient.DoRequest(ctx, "GET", "/v1/sandboxes", nil, queryParams)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +82,7 @@ func (c *Client) List(ctx context.Context, opts *models.ListSandboxesOptions) (*
 
 // Get retrieves a sandbox by ID
 func (c *Client) Get(ctx context.Context, sandboxID string) (*models.Sandbox, error) {
-	path := fmt.Sprintf("/api/v1/sandboxes/%s", sandboxID)
+	path := fmt.Sprintf("/v1/sandboxes/%s", sandboxID)
 	resp, err := c.baseClient.DoRequest(ctx, "GET", path, nil, nil)
 	if err != nil {
 		return nil, err
@@ -98,7 +98,7 @@ func (c *Client) Get(ctx context.Context, sandboxID string) (*models.Sandbox, er
 
 // GetStatus retrieves lightweight sandbox status
 func (c *Client) GetStatus(ctx context.Context, sandboxID string) (*models.SandboxStatus, error) {
-	path := fmt.Sprintf("/api/v1/sandboxes/%s/status", sandboxID)
+	path := fmt.Sprintf("/v1/sandboxes/%s/status", sandboxID)
 	resp, err := c.baseClient.DoRequest(ctx, "GET", path, nil, nil)
 	if err != nil {
 		return nil, err
@@ -114,7 +114,7 @@ func (c *Client) GetStatus(ctx context.Context, sandboxID string) (*models.Sandb
 
 // Update updates a sandbox
 func (c *Client) Update(ctx context.Context, sandboxID string, req models.UpdateSandboxRequest) (*models.Sandbox, error) {
-	path := fmt.Sprintf("/api/v1/sandboxes/%s", sandboxID)
+	path := fmt.Sprintf("/v1/sandboxes/%s", sandboxID)
 	resp, err := c.baseClient.DoRequest(ctx, "PUT", path, req, nil)
 	if err != nil {
 		return nil, err
@@ -130,7 +130,7 @@ func (c *Client) Update(ctx context.Context, sandboxID string, req models.Update
 
 // Delete deletes a sandbox
 func (c *Client) Delete(ctx context.Context, sandboxID string, force *bool) (*models.DeletionResponse, error) {
-	path := fmt.Sprintf("/api/v1/sandboxes/%s", sandboxID)
+	path := fmt.Sprintf("/v1/sandboxes/%s", sandboxID)
 	queryParams := make(map[string]string)
 	if force != nil && !*force {
 		queryParams["force"] = "false"
@@ -151,7 +151,7 @@ func (c *Client) Delete(ctx context.Context, sandboxID string, force *bool) (*mo
 
 // Terminate terminates a sandbox
 func (c *Client) Terminate(ctx context.Context, sandboxID string, force *bool) (*models.TerminationResponse, error) {
-	path := fmt.Sprintf("/api/v1/sandboxes/%s/terminate", sandboxID)
+	path := fmt.Sprintf("/v1/sandboxes/%s/terminate", sandboxID)
 	queryParams := make(map[string]string)
 	if force != nil && *force {
 		queryParams["force"] = "true"
@@ -172,7 +172,7 @@ func (c *Client) Terminate(ctx context.Context, sandboxID string, force *bool) (
 
 // Pause pauses a sandbox
 func (c *Client) Pause(ctx context.Context, sandboxID string) (*models.Sandbox, error) {
-	path := fmt.Sprintf("/api/v1/sandboxes/%s/pause", sandboxID)
+	path := fmt.Sprintf("/v1/sandboxes/%s/pause", sandboxID)
 	req := models.PauseSandboxRequest{}
 	resp, err := c.baseClient.DoRequest(ctx, "POST", path, req, nil)
 	if err != nil {
@@ -189,7 +189,7 @@ func (c *Client) Pause(ctx context.Context, sandboxID string) (*models.Sandbox, 
 
 // Resume resumes a sandbox
 func (c *Client) Resume(ctx context.Context, sandboxID string) (*models.Sandbox, error) {
-	path := fmt.Sprintf("/api/v1/sandboxes/%s/resume", sandboxID)
+	path := fmt.Sprintf("/v1/sandboxes/%s/resume", sandboxID)
 	req := models.ResumeSandboxRequest{}
 	resp, err := c.baseClient.DoRequest(ctx, "POST", path, req, nil)
 	if err != nil {
@@ -206,7 +206,7 @@ func (c *Client) Resume(ctx context.Context, sandboxID string) (*models.Sandbox,
 
 // Connect connects to a sandbox (resumes if paused)
 func (c *Client) Connect(ctx context.Context, sandboxID string, req *models.ConnectSandboxRequest) (*models.Sandbox, error) {
-	path := fmt.Sprintf("/api/v1/sandboxes/%s/connect", sandboxID)
+	path := fmt.Sprintf("/v1/sandboxes/%s/connect", sandboxID)
 	if req == nil {
 		req = &models.ConnectSandboxRequest{}
 	}
@@ -226,7 +226,7 @@ func (c *Client) Connect(ctx context.Context, sandboxID string, req *models.Conn
 
 // SetTimeout sets the timeout for a sandbox
 func (c *Client) SetTimeout(ctx context.Context, sandboxID string, req models.SandboxTimeoutRequest) (*models.Sandbox, error) {
-	path := fmt.Sprintf("/api/v1/sandboxes/%s/timeout", sandboxID)
+	path := fmt.Sprintf("/v1/sandboxes/%s/timeout", sandboxID)
 	resp, err := c.baseClient.DoRequest(ctx, "POST", path, req, nil)
 	if err != nil {
 		return nil, err
@@ -242,7 +242,7 @@ func (c *Client) SetTimeout(ctx context.Context, sandboxID string, req models.Sa
 
 // GetMetrics retrieves metrics for a sandbox
 func (c *Client) GetMetrics(ctx context.Context, sandboxID string, opts *models.GetSandboxMetricsOptions) (*models.SandboxMetricsResponse, error) {
-	path := fmt.Sprintf("/api/v1/sandboxes/%s/metrics", sandboxID)
+	path := fmt.Sprintf("/v1/sandboxes/%s/metrics", sandboxID)
 	queryParams := make(map[string]string)
 
 	if opts != nil {

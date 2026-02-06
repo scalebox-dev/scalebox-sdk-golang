@@ -33,9 +33,10 @@ dist/
 build/
 bin/
 
-# Environment files
+# Environment files (do not commit - contains secrets)
 .env
 .env.local
+integration/.env
 *.local
 
 # Logs

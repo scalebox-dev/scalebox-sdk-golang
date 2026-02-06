@@ -4,8 +4,8 @@
 
 - **模块名**: `github.com/scalebox/scalebox-sdk-golang`
 - **Go 版本**: 1.21
-- **总代码行数**: ~1200 行
-- **包数量**: 4 个主要包
+- **总代码行数**: ~1700 行
+- **包数量**: 5 个主要包
 
 ## 目录结构
 
@@ -13,8 +13,7 @@
 scalebox-sdk-golang/
 ├── go.mod                          # Go 模块定义
 ├── README.md                        # 项目文档和使用说明
-├── REQUIRED_INTERFACES.md           # 接口需求文档
-├── STRUCTURE.md                     # 本文件（结构分析）
+├── STRUCTURE.md                     # 本文件（项目结构文档）
 │
 ├── client/                          # HTTP 客户端基础包
 │   ├── client.go                    # 核心 HTTP 客户端实现
@@ -29,6 +28,11 @@ scalebox-sdk-golang/
 │   └── sandboxes/                  # Sandboxes API 客户端
 │       ├── client.go               # Sandboxes API 实现（12个接口）
 │       └── client_test.go          # 单元测试（8个测试用例）
+│
+├── integration/                     # 集成测试
+│   ├── sandboxes_test.go           # 集成测试用例（9个测试用例）
+│   ├── README.md                   # 集成测试说明文档
+│   └── .env.example                # 环境变量配置示例
 │
 └── examples/                        # 示例代码
     └── main.go                     # 使用示例
@@ -135,7 +139,40 @@ scalebox-sdk-golang/
 - 完整的错误处理测试
 - 代码覆盖率 50%
 
-### 4. `examples` 包 - 示例代码
+### 4. `integration` 包 - 集成测试
+
+**职责**: 提供针对真实 API 环境的集成测试
+
+**文件**:
+- `sandboxes_test.go` (~590 行)
+  - `TestIntegrationCreateSandbox()`: 测试创建沙箱
+  - `TestIntegrationGetSandbox()`: 测试获取沙箱详情
+  - `TestIntegrationListSandboxes()`: 测试列出沙箱
+  - `TestIntegrationGetSandboxStatus()`: 测试获取沙箱状态
+  - `TestIntegrationGetSandboxMetrics()`: 测试获取沙箱指标
+  - `TestIntegrationPauseSandbox()`: 测试暂停沙箱
+  - `TestIntegrationResumeSandbox()`: 测试恢复沙箱
+  - `TestIntegrationSetTimeout()`: 测试设置超时
+  - `TestIntegrationErrorHandling()`: 测试错误处理
+  - `setupClient()`: 测试客户端设置辅助函数
+
+- `README.md`: 集成测试使用说明
+- `.env.example`: 环境变量配置示例
+
+**特点**:
+- 使用 build tag `integration` 标记
+- 需要真实 API 服务器和有效的 API Key
+- 自动清理测试资源
+- 环境变量未设置时自动跳过
+
+**运行方式**:
+```bash
+export SCALEBOX_BASE_URL="https://api.scalebox.com"
+export SCALEBOX_API_KEY="your-api-key"
+go test -tags integration ./integration/... -v
+```
+
+### 5. `examples` 包 - 示例代码
 
 **职责**: 提供使用示例
 
@@ -183,12 +220,13 @@ models (数据层)
 | `client` | 2 | 140 | 0 |
 | `models` | 3 | 200 | 0 |
 | `api/sandboxes` | 2 | 620 | 1 |
+| `integration` | 3 | 590 | 1 |
 | `examples` | 1 | 150 | 0 |
-| **总计** | **8** | **~1200** | **1** |
+| **总计** | **11** | **~1700** | **2** |
 
 ## 接口实现状态
 
-根据 `REQUIRED_INTERFACES.md`，已实现所有 12 个接口：
+已实现所有 12 个 Sandboxes API 接口：
 
 - ✅ 1. 创建沙箱 (`POST /sandboxes`)
 - ✅ 2. 列出沙箱 (`GET /sandboxes`)
@@ -209,16 +247,39 @@ models (数据层)
 1. ✅ **清晰的包结构**: 职责分离明确
 2. ✅ **完整的类型定义**: 所有数据结构都有对应的 Go 类型
 3. ✅ **良好的错误处理**: 统一的错误类型和辅助函数
-4. ✅ **测试覆盖**: 核心功能都有单元测试
+4. ✅ **测试覆盖**: 核心功能都有单元测试和集成测试
 5. ✅ **文档完善**: README 和示例代码齐全
 6. ✅ **符合 Go 惯例**: 命名和结构遵循 Go 最佳实践
+7. ✅ **双重测试策略**: 单元测试 + 集成测试，确保代码质量和真实环境兼容性
 
 ### 可改进点
-1. ⚠️ **测试覆盖率**: 当前 50%，可以增加到 80%+
+1. ⚠️ **测试覆盖率**: 单元测试覆盖率当前 50%，可以增加到 80%+
 2. ⚠️ **client 包测试**: 缺少 HTTP 客户端的单元测试
 3. ⚠️ **并发安全**: 如果需要在多 goroutine 中使用，可能需要考虑线程安全
 4. ⚠️ **重试机制**: 可以添加自动重试功能
 5. ⚠️ **日志支持**: 可以添加可选的日志记录功能
+
+### 测试策略
+
+项目采用**双重测试策略**：
+
+1. **单元测试** (`api/sandboxes/client_test.go`)
+   - 使用 `httptest` 模拟 HTTP 服务器
+   - 快速、稳定、不依赖外部服务
+   - 测试 SDK 代码逻辑的正确性
+   - 运行命令: `go test ./api/sandboxes/...`
+
+2. **集成测试** (`integration/sandboxes_test.go`)
+   - 连接到真实的 API 服务器
+   - 验证 SDK 与真实环境的集成
+   - 需要有效的 API 凭证
+   - 运行命令: `go test -tags integration ./integration/...`
+
+**最佳实践**:
+- 开发时主要使用单元测试进行快速迭代
+- 提交前运行单元测试确保代码正确
+- 合并前运行集成测试确保与真实环境兼容
+- 发布前运行完整的测试套件
 
 ## 扩展性
 

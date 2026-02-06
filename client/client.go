@@ -85,6 +85,15 @@ func (c *Client) DoRequest(ctx context.Context, method, path string, body interf
 	return resp, nil
 }
 
+// StandardResponse represents the backend's standard API response wrapper
+type StandardResponse struct {
+	Success   bool            `json:"success"`
+	Data      json.RawMessage `json:"data,omitempty"`
+	Message   string          `json:"message,omitempty"`
+	Error     string          `json:"error,omitempty"`
+	Timestamp string          `json:"timestamp,omitempty"`
+}
+
 // ParseResponse parses the HTTP response into the target struct
 func (c *Client) ParseResponse(resp *http.Response, target interface{}) error {
 	defer resp.Body.Close()
@@ -96,11 +105,27 @@ func (c *Client) ParseResponse(resp *http.Response, target interface{}) error {
 
 	// Check status code
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		var apiErr Error
-		if err := json.Unmarshal(body, &apiErr); err == nil && apiErr.Message != "" {
+		var apiErr StandardResponse
+		if err := json.Unmarshal(body, &apiErr); err == nil {
+			if apiErr.Error != "" {
+				return &APIError{
+					StatusCode: resp.StatusCode,
+					Message:    apiErr.Error,
+				}
+			}
+			if apiErr.Message != "" {
+				return &APIError{
+					StatusCode: resp.StatusCode,
+					Message:    apiErr.Message,
+				}
+			}
+		}
+		// Fallback: try old error format
+		var oldErr Error
+		if err := json.Unmarshal(body, &oldErr); err == nil && oldErr.Message != "" {
 			return &APIError{
 				StatusCode: resp.StatusCode,
-				Message:    apiErr.Message,
+				Message:    oldErr.Message,
 			}
 		}
 		return &APIError{
@@ -111,6 +136,17 @@ func (c *Client) ParseResponse(resp *http.Response, target interface{}) error {
 
 	// Parse JSON response
 	if target != nil {
+		// Try to parse as wrapped response first
+		var wrapped StandardResponse
+		if err := json.Unmarshal(body, &wrapped); err == nil && wrapped.Success && len(wrapped.Data) > 0 {
+			// Response is wrapped, extract data field
+			if err := json.Unmarshal(wrapped.Data, target); err != nil {
+				return fmt.Errorf("failed to parse response data: %w", err)
+			}
+			return nil
+		}
+
+		// Not wrapped, parse directly
 		if err := json.Unmarshal(body, target); err != nil {
 			return fmt.Errorf("failed to parse response: %w", err)
 		}

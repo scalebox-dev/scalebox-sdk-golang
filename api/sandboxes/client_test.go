@@ -18,8 +18,8 @@ func TestCreate(t *testing.T) {
 		if r.Method != "POST" {
 			t.Errorf("Expected POST, got %s", r.Method)
 		}
-		if r.URL.Path != "/api/v1/sandboxes" {
-			t.Errorf("Expected /api/v1/sandboxes, got %s", r.URL.Path)
+		if r.URL.Path != "/v1/sandboxes" {
+			t.Errorf("Expected /v1/sandboxes, got %s", r.URL.Path)
 		}
 		if r.Header.Get("X-API-KEY") == "" {
 			t.Error("Expected X-API-KEY header")
@@ -81,7 +81,7 @@ func TestGet(t *testing.T) {
 		if r.Method != "GET" {
 			t.Errorf("Expected GET, got %s", r.Method)
 		}
-		expectedPath := "/api/v1/sandboxes/" + sandboxID
+		expectedPath := "/v1/sandboxes/" + sandboxID
 		if r.URL.Path != expectedPath {
 			t.Errorf("Expected %s, got %s", expectedPath, r.URL.Path)
 		}
@@ -115,8 +115,8 @@ func TestList(t *testing.T) {
 		if r.Method != "GET" {
 			t.Errorf("Expected GET, got %s", r.Method)
 		}
-		if r.URL.Path != "/api/v1/sandboxes" {
-			t.Errorf("Expected /api/v1/sandboxes, got %s", r.URL.Path)
+		if r.URL.Path != "/v1/sandboxes" {
+			t.Errorf("Expected /v1/sandboxes, got %s", r.URL.Path)
 		}
 
 		// Check query parameters
@@ -168,7 +168,7 @@ func TestDelete(t *testing.T) {
 		if r.Method != "DELETE" {
 			t.Errorf("Expected DELETE, got %s", r.Method)
 		}
-		expectedPath := "/api/v1/sandboxes/" + sandboxID
+		expectedPath := "/v1/sandboxes/" + sandboxID
 		if r.URL.Path != expectedPath {
 			t.Errorf("Expected %s, got %s", expectedPath, r.URL.Path)
 		}
@@ -207,7 +207,7 @@ func TestPause(t *testing.T) {
 		if r.Method != "POST" {
 			t.Errorf("Expected POST, got %s", r.Method)
 		}
-		expectedPath := "/api/v1/sandboxes/" + sandboxID + "/pause"
+		expectedPath := "/v1/sandboxes/" + sandboxID + "/pause"
 		if r.URL.Path != expectedPath {
 			t.Errorf("Expected %s, got %s", expectedPath, r.URL.Path)
 		}
@@ -243,7 +243,7 @@ func TestResume(t *testing.T) {
 		if r.Method != "POST" {
 			t.Errorf("Expected POST, got %s", r.Method)
 		}
-		expectedPath := "/api/v1/sandboxes/" + sandboxID + "/resume"
+		expectedPath := "/v1/sandboxes/" + sandboxID + "/resume"
 		if r.URL.Path != expectedPath {
 			t.Errorf("Expected %s, got %s", expectedPath, r.URL.Path)
 		}
@@ -281,7 +281,7 @@ func TestGetMetrics(t *testing.T) {
 		if r.Method != "GET" {
 			t.Errorf("Expected GET, got %s", r.Method)
 		}
-		expectedPath := "/api/v1/sandboxes/" + sandboxID + "/metrics"
+		expectedPath := "/v1/sandboxes/" + sandboxID + "/metrics"
 		if r.URL.Path != expectedPath {
 			t.Errorf("Expected %s, got %s", expectedPath, r.URL.Path)
 		}
