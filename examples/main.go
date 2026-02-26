@@ -32,7 +32,7 @@ func main() {
 		Timeout:   300,
 		Metadata: map[string]string{
 			"environment": "development",
-			"team":         "backend",
+			"team":        "backend",
 		},
 	}
 
@@ -132,7 +132,23 @@ func main() {
 		fmt.Printf("超时时间已更新: %d 秒\n", updatedSandbox.Timeout)
 	}
 
-	// 示例 9: 错误处理
+	// 示例 9: 直连 Sandbox Agent（Commands / PTY / Code Interpreter / watch_dir）
+	// 需沙箱 running 且 allow_internet_access=true
+	fmt.Println("\n=== 直连 Agent 执行命令 ===")
+	agentClient, err := sandboxClient.ConnectToAgent(ctx, sandbox.SandboxID)
+	if err != nil {
+		log.Printf("ConnectToAgent 失败: %v (沙箱可能未运行或未开启公网)", err)
+	} else {
+		// 执行命令
+		result, err := agentClient.Commands().Run(ctx, "echo hello", nil)
+		if err != nil {
+			log.Printf("Commands.Run 失败: %v", err)
+		} else if r, ok := result.(*sandboxes.CommandResult); ok {
+			fmt.Printf("命令输出: %s\n", string(r.Stdout))
+		}
+	}
+
+	// 示例 10: 错误处理
 	fmt.Println("\n=== 错误处理示例 ===")
 	_, err = sandboxClient.Get(ctx, "nonexistent-sandbox-id")
 	if err != nil {

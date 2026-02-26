@@ -1,6 +1,9 @@
 # Scalebox Go SDK
 
-Scalebox Go SDK 提供了与 Scalebox API 交互的 Go 客户端库。
+Scalebox Go SDK 提供与 Scalebox API 交互的 Go 客户端库，采用 **REST + gRPC/Connect 双通道** 架构：
+
+- **REST**：沙箱 CRUD、文件操作、端口管理（经 Backend）
+- **gRPC/Connect**：Commands、PTY、Code Interpreter、watch_dir（直连 Sandbox Agent）
 
 ## 安装
 
@@ -147,6 +150,38 @@ req := &models.ConnectSandboxRequest{
     Timeout: &timeout, // 可选
 }
 sandbox, err := sandboxClient.Connect(ctx, "sbx-xxx", req)
+```
+
+### 直连 Sandbox Agent（Commands / PTY / Code Interpreter / watch_dir）
+
+需沙箱 running 且 allow_internet_access=true。内部通过 gRPC/Connect 直连 Sandbox Agent。
+
+```go
+agent, err := sandboxClient.ConnectToAgent(ctx, "sbx-xxx")
+if err != nil {
+    log.Fatal(err)
+}
+
+// 执行命令
+result, err := agent.Commands().Run(ctx, "echo hello", nil)
+if err == nil {
+    if r, ok := result.(*sandboxes.CommandResult); ok {
+        fmt.Println(string(r.Stdout))
+    }
+}
+
+// PTY 创建
+ptyHandle, err := agent.PTY().Create(ctx, &sandboxes.PtyOptions{Size: sandboxes.PtySize{Cols: 80, Rows: 24}})
+
+// Code Interpreter
+ctxObj, _ := agent.CodeInterpreter().CreateContext(ctx, nil)
+execResult, _ := agent.CodeInterpreter().RunCode(ctx, ctxObj.ID, "print(1+1)", nil)
+
+// 监控目录
+handle, _ := agent.WatchDir(ctx, "/home/user", false, func(ev sandboxes.FilesystemEvent) {
+    fmt.Printf("Event: %s %v\n", ev.Name, ev.Type)
+})
+defer handle.Stop()
 ```
 
 ### 设置超时
