@@ -590,3 +590,81 @@ func TestIntegrationErrorHandling(t *testing.T) {
 		t.Logf("其他错误: %v", err)
 	}
 }
+
+// TestIntegrationListFiles 测试列出沙箱内目录
+func TestIntegrationListFiles(t *testing.T) {
+	sandboxClient := setupClient(t)
+	ctx := context.Background()
+
+	// 先创建一个沙箱用于测试
+	createReq := models.CreateSandboxRequest{
+		Name:      "list-files-test",
+		Template:  "base",
+		CPUCount:  2,
+		MemoryMB:  512,
+		StorageGB: 2,
+	}
+
+	sandbox, err := sandboxClient.Create(ctx, createReq)
+	if err != nil {
+		t.Fatalf("创建测试沙箱失败: %v", err)
+	}
+	defer func() {
+		_, _ = sandboxClient.Delete(ctx, sandbox.SandboxID, nil)
+	}()
+
+	// 等待沙箱状态变为 running（文件操作需要 running 且允许互联网访问）
+	maxWaitTime := 30 * time.Second
+	checkInterval := 2 * time.Second
+	deadline := time.Now().Add(maxWaitTime)
+
+	t.Logf("等待沙箱状态变为 running...")
+	for time.Now().Before(deadline) {
+		sandboxStatus, err := sandboxClient.GetStatus(ctx, sandbox.SandboxID)
+		if err != nil {
+			t.Fatalf("获取沙箱状态失败: %v", err)
+		}
+
+		if sandboxStatus.Status == "running" {
+			t.Logf("沙箱状态已变为 running")
+			break
+		}
+
+		if sandboxStatus.Status == "failed" || sandboxStatus.Status == "terminated" {
+			t.Fatalf("沙箱状态异常（%s），无法执行文件操作", sandboxStatus.Status)
+		}
+
+		time.Sleep(checkInterval)
+		t.Logf("当前状态: %s，继续等待...", sandboxStatus.Status)
+	}
+
+	finalStatus, err := sandboxClient.GetStatus(ctx, sandbox.SandboxID)
+	if err != nil {
+		t.Fatalf("获取沙箱状态失败: %v", err)
+	}
+	if finalStatus.Status != "running" {
+		t.Fatalf("沙箱在 %v 内未达到 running 状态（当前: %s）", maxWaitTime, finalStatus.Status)
+	}
+
+	// 调用 ListFiles
+	result, err := sandboxClient.ListFiles(ctx, sandbox.SandboxID, "/home/user", 1)
+	if err != nil {
+		// 私有沙箱会返回 400，可跳过
+		if client.StatusCode(err) == 400 {
+			t.Skip("沙箱不允许互联网访问或域名不可用，跳过 ListFiles 测试")
+		}
+		t.Fatalf("ListFiles 失败: %v", err)
+	}
+
+	if result == nil {
+		t.Error("ListFiles 响应不应为 nil")
+	}
+	if result.Entries == nil {
+		t.Error("Entries 不应为 nil")
+	}
+
+	t.Logf("ListFiles 成功，目录项数量: %d", len(result.Entries))
+	for i, e := range result.Entries {
+		t.Logf("  项 %d: %s (%s) - size=%d", i+1, e.Name, e.Path, e.Size)
+	}
+}

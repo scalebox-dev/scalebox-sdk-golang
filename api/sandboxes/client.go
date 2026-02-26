@@ -240,6 +240,29 @@ func (c *Client) SetTimeout(ctx context.Context, sandboxID string, req models.Sa
 	return &sandbox, nil
 }
 
+// ListFiles lists directory contents in a sandbox
+func (c *Client) ListFiles(ctx context.Context, sandboxID string, path string, depth uint32) (*models.FileListResponse, error) {
+	apiPath := fmt.Sprintf("/v1/sandboxes/%s/files/list", sandboxID)
+	req := models.FileListRequest{Path: path}
+	if depth > 0 {
+		req.Depth = depth
+	} else {
+		req.Depth = 1
+	}
+
+	resp, err := c.baseClient.DoRequest(ctx, "POST", apiPath, req, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var result models.FileListResponse
+	if err := c.baseClient.ParseResponse(resp, &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
 // GetMetrics retrieves metrics for a sandbox
 func (c *Client) GetMetrics(ctx context.Context, sandboxID string, opts *models.GetSandboxMetricsOptions) (*models.SandboxMetricsResponse, error) {
 	path := fmt.Sprintf("/v1/sandboxes/%s/metrics", sandboxID)

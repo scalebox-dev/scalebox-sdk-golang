@@ -3,6 +3,7 @@ package sandboxes
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -364,6 +365,61 @@ func TestErrorHandling(t *testing.T) {
 
 	if apiErr.StatusCode != http.StatusNotFound {
 		t.Errorf("Expected status code %d, got %d", http.StatusNotFound, apiErr.StatusCode)
+	}
+}
+
+func TestListFiles(t *testing.T) {
+	sandboxID := "sbx-test123"
+	path := "/home/user"
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			t.Errorf("Expected POST, got %s", r.Method)
+		}
+		expectedPath := fmt.Sprintf("/v1/sandboxes/%s/files/list", sandboxID)
+		if r.URL.Path != expectedPath {
+			t.Errorf("Expected %s, got %s", expectedPath, r.URL.Path)
+		}
+
+		var req models.FileListRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Errorf("Failed to decode request: %v", err)
+		}
+		if req.Path != path {
+			t.Errorf("Expected path %q, got %q", path, req.Path)
+		}
+
+		// Return wrapped response (backend format)
+		entries := []models.EntryInfo{
+			{Name: "file1.txt", Type: models.FileTypeFile, Path: "/home/user/file1.txt", Size: 100},
+			{Name: "dir1", Type: models.FileTypeDirectory, Path: "/home/user/dir1", Size: 0},
+		}
+		wrapped := map[string]interface{}{
+			"success": true,
+			"data":    map[string]interface{}{"entries": entries},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(wrapped)
+	}))
+	defer server.Close()
+
+	baseClient := client.NewClient(server.URL, "test-api-key")
+	sandboxClient := NewClient(baseClient)
+
+	result, err := sandboxClient.ListFiles(context.Background(), sandboxID, path, 1)
+	if err != nil {
+		t.Fatalf("ListFiles failed: %v", err)
+	}
+
+	if len(result.Entries) != 2 {
+		t.Errorf("Expected 2 entries, got %d", len(result.Entries))
+	}
+	if result.Entries[0].Name != "file1.txt" || result.Entries[0].Type != models.FileTypeFile {
+		t.Errorf("Expected first entry file1.txt (FILE), got %s (%d)", result.Entries[0].Name, result.Entries[0].Type)
+	}
+	if result.Entries[1].Name != "dir1" || result.Entries[1].Type != models.FileTypeDirectory {
+		t.Errorf("Expected second entry dir1 (DIRECTORY), got %s (%d)", result.Entries[1].Name, result.Entries[1].Type)
 	}
 }
 

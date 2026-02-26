@@ -14,9 +14,11 @@ func init() {
 	// 按顺序尝试：integration/.env、当前工作目录 .env
 	wd, _ := os.Getwd()
 	tryPaths := []string{
+		filepath.Join(wd, "integration_test", ".env"),
 		filepath.Join(wd, "integration", ".env"),
 		filepath.Join(wd, ".env"),
 		".env",
+		filepath.Join("integration_test", ".env"),
 		filepath.Join("integration", ".env"),
 	}
 	for _, p := range tryPaths {
