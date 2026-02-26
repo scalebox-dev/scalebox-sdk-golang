@@ -36,7 +36,7 @@ bin/
 # Environment files (do not commit - contains secrets)
 .env
 .env.local
-integration/.env
+integration_test/.env
 *.local
 
 # Logs
