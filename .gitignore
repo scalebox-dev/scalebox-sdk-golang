@@ -37,6 +37,7 @@ bin/
 .env
 .env.local
 integration_test/.env
+e2e_test/.env
 *.local
 
 # Logs

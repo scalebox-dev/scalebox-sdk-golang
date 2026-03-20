@@ -15,11 +15,7 @@ import (
 func TestTemplateExportImportSingle(t *testing.T) {
 	sandboxClient := setupClient(t)
 	ctx := context.Background()
-
-	projectID := os.Getenv("SCALEBOX_PROJECT_ID")
-	if projectID == "" {
-		projectID = "prj-e2e0000000000001"
-	}
+	projectID := requireProjectID(t)
 
 	sandbox, err := sandboxClient.Create(ctx, models.CreateSandboxRequest{
 		Name:      shortSandboxName("e2e-ts"),
@@ -101,11 +97,7 @@ func TestTemplateExportImportSingle(t *testing.T) {
 func TestTemplateExportImportDual(t *testing.T) {
 	sandboxClient := setupClient(t)
 	ctx := context.Background()
-
-	projectID := os.Getenv("SCALEBOX_PROJECT_ID")
-	if projectID == "" {
-		projectID = "prj-e2e0000000000001"
-	}
+	projectID := requireProjectID(t)
 
 	sandbox, err := sandboxClient.Create(ctx, models.CreateSandboxRequest{
 		Name:      shortSandboxName("e2e-rd"),

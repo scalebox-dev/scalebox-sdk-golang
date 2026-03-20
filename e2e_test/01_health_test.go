@@ -4,7 +4,6 @@ package e2e
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/scalebox/scalebox-sdk-golang/client"
@@ -13,15 +12,8 @@ import (
 
 // TestHealth tests backend health check
 func TestHealth(t *testing.T) {
-	baseURL := os.Getenv("SCALEBOX_BASE_URL")
-	apiKey := os.Getenv("SCALEBOX_API_KEY")
-
-	if baseURL == "" {
-		t.Skip("跳过 E2E 测试: SCALEBOX_BASE_URL 环境变量未设置")
-	}
-	if apiKey == "" {
-		t.Skip("跳过 E2E 测试: SCALEBOX_API_KEY 环境变量未设置")
-	}
+	baseURL := requireEnv(t, "SCALEBOX_BASE_URL")
+	apiKey := requireEnv(t, "SCALEBOX_API_KEY")
 
 	baseClient := client.NewClient(baseURL, apiKey)
 
@@ -35,11 +27,7 @@ func TestHealth(t *testing.T) {
 func TestCodeInterpreterTemplateExists(t *testing.T) {
 	sandboxClient := setupClient(t)
 	ctx := context.Background()
-
-	projectID := os.Getenv("SCALEBOX_PROJECT_ID")
-	if projectID == "" {
-		projectID = "prj-e2e0000000000001"
-	}
+	projectID := requireProjectID(t)
 
 	sandbox, err := sandboxClient.Create(ctx, models.CreateSandboxRequest{
 		Name:      shortSandboxName("e2e-ci"),

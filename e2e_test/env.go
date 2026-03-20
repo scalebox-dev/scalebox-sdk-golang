@@ -3,6 +3,7 @@
 package e2e
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -17,10 +18,19 @@ func init() {
 		filepath.Join(wd, ".env"),
 		".env",
 	}
+	envLoaded := false
 	for _, p := range tryPaths {
 		if _, err := os.Stat(p); err == nil {
-			_ = godotenv.Load(p)
+			if err := godotenv.Load(p); err != nil {
+				fmt.Printf("Warning: failed to load .env from %s: %v\n", p, err)
+			} else {
+				envLoaded = true
+			}
 			break
 		}
+	}
+	if !envLoaded {
+		fmt.Println("Error: .env file not found. Please copy .env.example to .env and configure it.")
+		os.Exit(1)
 	}
 }

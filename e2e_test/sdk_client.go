@@ -3,6 +3,7 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -12,40 +13,42 @@ import (
 	"github.com/scalebox/scalebox-sdk-golang/client"
 )
 
+// requireEnv returns the value of an environment variable or fails the test
+func requireEnv(t *testing.T, key string) string {
+	value := os.Getenv(key)
+	if value == "" {
+		t.Fatalf("Required environment variable %s is not set", key)
+	}
+	return value
+}
+
 // setupClient creates an SDK client for tests, reading config from environment variables
 func setupClient(t *testing.T) *sandboxes.Client {
-	baseURL := os.Getenv("SCALEBOX_BASE_URL")
-	apiKey := os.Getenv("SCALEBOX_API_KEY")
-
-	if baseURL == "" {
-		t.Skip("跳过 E2E 测试: SCALEBOX_BASE_URL 环境变量未设置")
-	}
-	if apiKey == "" {
-		t.Skip("跳过 E2E 测试: SCALEBOX_API_KEY 环境变量未设置")
-	}
+	baseURL := requireEnv(t, "SCALEBOX_BASE_URL")
+	apiKey := requireEnv(t, "SCALEBOX_API_KEY")
 
 	baseClient := client.NewClient(baseURL, apiKey)
 	return sandboxes.NewClient(baseClient)
 }
 
+// requireProjectID returns the project ID from environment or fails the test
+func requireProjectID(t *testing.T) string {
+	return requireEnv(t, "SCALEBOX_PROJECT_ID")
+}
+
 // getTestTemplate returns the sandbox template name for E2E tests
-// helm-deployment's push-public-template.sh only registers code-interpreter, so default is code-interpreter
-// Can be overridden via SCALEBOX_TEMPLATE environment variable
 func getTestTemplate() string {
-	if tpl := os.Getenv("SCALEBOX_TEMPLATE"); tpl != "" {
-		return tpl
-	}
-	return "code-interpreter"
+	return os.Getenv("SCALEBOX_TEMPLATE")
 }
 
 // getRedisTemplate returns the redis template name for E2E tests
 func getRedisTemplate() string {
-	return "redis-e2e"
+	return os.Getenv("SCALEBOX_REDIS_TEMPLATE")
 }
 
 // getNekoWebRTCTemplate returns the neko-webrtc template name for E2E tests
 func getNekoWebRTCTemplate() string {
-	return "neko-webrtc-e2e"
+	return os.Getenv("SCALEBOX_NEKO_TEMPLATE")
 }
 
 // shortSandboxName generates a unique sandbox name with ≤24 character limit (API requirement)
@@ -69,4 +72,21 @@ func shortTemplateName(prefix string) string {
 		return name[:32]
 	}
 	return name
+}
+
+// waitForSandboxStatus waits for a sandbox to reach the expected status
+func waitForSandboxStatus(sbClient *sandboxes.Client, ctx context.Context, sandboxID string, expectedStatus string, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		status, err := sbClient.GetStatus(ctx, sandboxID)
+		if err != nil {
+			time.Sleep(5 * time.Second)
+			continue
+		}
+		if status.Status == expectedStatus {
+			return nil
+		}
+		time.Sleep(5 * time.Second)
+	}
+	return fmt.Errorf("sandbox %s did not reach status %s within %v", sandboxID, expectedStatus, timeout)
 }

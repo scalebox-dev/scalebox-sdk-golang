@@ -4,6 +4,7 @@ package e2e
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -11,15 +12,16 @@ import (
 	"github.com/scalebox/scalebox-sdk-golang/models"
 )
 
+// batchOSSFile generates an OSS file path for a sandbox
+func batchOSSFile(sandboxID string) string {
+	return fmt.Sprintf("/mnt/oss/%s-oss-test.txt", sandboxID)
+}
+
 // TestBatchSingleWithOSS tests batch single container with OSS
 func TestBatchSingleWithOSS(t *testing.T) {
 	sandboxClient := setupClient(t)
 	ctx := context.Background()
-
-	projectID := os.Getenv("SCALEBOX_PROJECT_ID")
-	if projectID == "" {
-		projectID = "prj-e2e0000000000001"
-	}
+	projectID := requireProjectID(t)
 
 	ossURI := os.Getenv("E2E_OSS_URI")
 	ossAccessKey := os.Getenv("E2E_OSS_ACCESS_KEY")
@@ -28,7 +30,7 @@ func TestBatchSingleWithOSS(t *testing.T) {
 	ossRegion := os.Getenv("E2E_OSS_REGION")
 
 	if ossURI == "" || ossAccessKey == "" || ossSecretKey == "" {
-		t.Skip("OSS credentials not configured, skipping OSS test")
+		t.Fatalf("Required environment variable E2E_OSS_URI/E2E_OSS_ACCESS_KEY/E2E_OSS_SECRET_KEY is not set")
 	}
 
 	batchSize := getBatchSize()
@@ -57,9 +59,10 @@ func TestBatchSingleWithOSS(t *testing.T) {
 	}
 
 	defer func() {
-		for _, id := range sandboxIDs {
-			sandboxClient.Delete(ctx, id, nil)
-		}
+		sandboxClient.BatchDelete(ctx, models.BatchDeleteRequest{
+			SandboxIDs: sandboxIDs,
+			Force:      boolPtr(true),
+		})
 	}()
 
 	t.Logf("Waiting for %d sandboxes to be running...", batchSize)
@@ -73,29 +76,115 @@ func TestBatchSingleWithOSS(t *testing.T) {
 
 	t.Logf("%d sandboxes are running", batchSize)
 
-	// Write with timeout
+	// Write OSS file to each sandbox
 	writeCtx, writeCancel := context.WithTimeout(ctx, 60*time.Second)
 	defer writeCancel()
 
-	testContent := "oss-test"
+	testContent := "oss-pause-resume-verify"
 	for _, id := range sandboxIDs {
-		err := sandboxClient.Write(writeCtx, id, "/mnt/oss/oss-test.txt", []byte(testContent))
+		ossPath := batchOSSFile(id)
+		err := sandboxClient.Write(writeCtx, id, ossPath, []byte(testContent))
 		if err != nil {
-			t.Fatalf("Write failed for sandbox %s: %v", id, err)
+			t.Fatalf("Write OSS failed for sandbox %s: %v", id, err)
 		}
+		t.Logf("Wrote OSS file %s to sandbox %s", ossPath, id)
 	}
 
-	// Read test
+	// First round: pause -> resume -> verify
+	t.Logf("First round: batch pause")
+	pauseResp, err := sandboxClient.BatchPause(ctx, models.BatchPauseRequest{
+		SandboxIDs: sandboxIDs,
+	})
+	if err != nil {
+		t.Fatalf("BatchPause failed: %v", err)
+	}
+	t.Logf("BatchPause: total=%d, successful=%d, failed=%d", pauseResp.Total, pauseResp.Successful, pauseResp.Failed)
+
+	// Wait for all sandboxes to be paused
 	for _, id := range sandboxIDs {
-		data, err := sandboxClient.Read(ctx, id, "/mnt/oss/oss-test.txt")
+		if err := waitForSandboxStatus(sandboxClient, ctx, id, "paused", 5*time.Minute); err != nil {
+			t.Fatalf("Sandbox %s did not reach paused: %v", id, err)
+		}
+		t.Logf("Sandbox %s is paused", id)
+	}
+
+	t.Logf("First round: batch resume")
+	resumeResp, err := sandboxClient.BatchResume(ctx, models.BatchResumeRequest{
+		SandboxIDs: sandboxIDs,
+	})
+	if err != nil {
+		t.Fatalf("BatchResume failed: %v", err)
+	}
+	t.Logf("BatchResume: total=%d, successful=%d, failed=%d", resumeResp.Total, resumeResp.Successful, resumeResp.Failed)
+
+	// Wait for all sandboxes to be running
+	for _, id := range sandboxIDs {
+		if err := waitForSandboxRunning(sandboxClient, ctx, id, 5*time.Minute); err != nil {
+			t.Fatalf("Sandbox %s did not reach running after resume: %v", id, err)
+		}
+		t.Logf("Sandbox %s is running after first resume", id)
+	}
+
+	// Verify OSS file content after first resume
+	for _, id := range sandboxIDs {
+		ossPath := batchOSSFile(id)
+		data, err := sandboxClient.Read(ctx, id, ossPath)
 		if err != nil {
 			t.Fatalf("Read OSS file failed for sandbox %s: %v", id, err)
 		}
 		if string(data) != testContent {
-			t.Errorf("OSS file content mismatch for sandbox %s: got %s, want %s", id, string(data), testContent)
+			t.Errorf("OSS file content mismatch for sandbox %s after first resume: got %s, want %s", id, string(data), testContent)
 		}
 	}
 
+	// Second round: pause -> resume -> verify
+	t.Logf("Second round: batch pause")
+	pauseResp, err = sandboxClient.BatchPause(ctx, models.BatchPauseRequest{
+		SandboxIDs: sandboxIDs,
+	})
+	if err != nil {
+		t.Fatalf("BatchPause failed: %v", err)
+	}
+	t.Logf("BatchPause: total=%d, successful=%d, failed=%d", pauseResp.Total, pauseResp.Successful, pauseResp.Failed)
+
+	// Wait for all sandboxes to be paused
+	for _, id := range sandboxIDs {
+		if err := waitForSandboxStatus(sandboxClient, ctx, id, "paused", 5*time.Minute); err != nil {
+			t.Fatalf("Sandbox %s did not reach paused: %v", id, err)
+		}
+		t.Logf("Sandbox %s is paused", id)
+	}
+
+	t.Logf("Second round: batch resume")
+	resumeResp, err = sandboxClient.BatchResume(ctx, models.BatchResumeRequest{
+		SandboxIDs: sandboxIDs,
+	})
+	if err != nil {
+		t.Fatalf("BatchResume failed: %v", err)
+	}
+	t.Logf("BatchResume: total=%d, successful=%d, failed=%d", resumeResp.Total, resumeResp.Successful, resumeResp.Failed)
+
+	// Wait for all sandboxes to be running
+	for _, id := range sandboxIDs {
+		if err := waitForSandboxRunning(sandboxClient, ctx, id, 5*time.Minute); err != nil {
+			t.Fatalf("Sandbox %s did not reach running after resume: %v", id, err)
+		}
+		t.Logf("Sandbox %s is running after second resume", id)
+	}
+
+	// Verify OSS file content after second resume
+	for _, id := range sandboxIDs {
+		ossPath := batchOSSFile(id)
+		data, err := sandboxClient.Read(ctx, id, ossPath)
+		if err != nil {
+			t.Fatalf("Read OSS file failed for sandbox %s: %v", id, err)
+		}
+		if string(data) != testContent {
+			t.Errorf("OSS file content mismatch for sandbox %s after second resume: got %s, want %s", id, string(data), testContent)
+		}
+	}
+
+	// Batch delete
 	resp, err := sandboxClient.BatchDelete(ctx, models.BatchDeleteRequest{
 		SandboxIDs: sandboxIDs,
 		Force:      boolPtr(true),
@@ -116,10 +205,7 @@ func TestBatchDualWithOSS(t *testing.T) {
 	sandboxClient := setupClient(t)
 	ctx := context.Background()
 
-	projectID := os.Getenv("SCALEBOX_PROJECT_ID")
-	if projectID == "" {
-		projectID = "prj-e2e0000000000001"
-	}
+	projectID := requireProjectID(t)
 
 	ossURI := os.Getenv("E2E_OSS_URI")
 	ossAccessKey := os.Getenv("E2E_OSS_ACCESS_KEY")
@@ -128,7 +214,7 @@ func TestBatchDualWithOSS(t *testing.T) {
 	ossRegion := os.Getenv("E2E_OSS_REGION")
 
 	if ossURI == "" || ossAccessKey == "" || ossSecretKey == "" {
-		t.Skip("OSS credentials not configured, skipping OSS test")
+		t.Fatalf("Required environment variable E2E_OSS_URI/E2E_OSS_ACCESS_KEY/E2E_OSS_SECRET_KEY is not set")
 	}
 
 	batchSize := getBatchSize()
@@ -157,9 +243,10 @@ func TestBatchDualWithOSS(t *testing.T) {
 	}
 
 	defer func() {
-		for _, id := range sandboxIDs {
-			sandboxClient.Delete(ctx, id, nil)
-		}
+		sandboxClient.BatchDelete(ctx, models.BatchDeleteRequest{
+			SandboxIDs: sandboxIDs,
+			Force:      boolPtr(true),
+		})
 	}()
 
 	t.Logf("Waiting for %d redis sandboxes to be running...", batchSize)
@@ -173,29 +260,115 @@ func TestBatchDualWithOSS(t *testing.T) {
 
 	t.Logf("%d redis sandboxes are running", batchSize)
 
-	// Write with timeout
+	// Write OSS file to each sandbox
 	writeCtx, writeCancel := context.WithTimeout(ctx, 60*time.Second)
 	defer writeCancel()
 
-	testContent := "oss-redis-test"
+	testContent := "oss-pause-resume-verify"
 	for _, id := range sandboxIDs {
-		err := sandboxClient.Write(writeCtx, id, "/mnt/oss/oss-test.txt", []byte(testContent))
+		ossPath := batchOSSFile(id)
+		err := sandboxClient.Write(writeCtx, id, ossPath, []byte(testContent))
 		if err != nil {
-			t.Fatalf("Write failed for sandbox %s: %v", id, err)
+			t.Fatalf("Write OSS failed for sandbox %s: %v", id, err)
 		}
+		t.Logf("Wrote OSS file %s to sandbox %s", ossPath, id)
 	}
 
-	// Read test
+	// First round: pause -> resume -> verify
+	t.Logf("First round: batch pause")
+	pauseResp, err := sandboxClient.BatchPause(ctx, models.BatchPauseRequest{
+		SandboxIDs: sandboxIDs,
+	})
+	if err != nil {
+		t.Fatalf("BatchPause failed: %v", err)
+	}
+	t.Logf("BatchPause: total=%d, successful=%d, failed=%d", pauseResp.Total, pauseResp.Successful, pauseResp.Failed)
+
+	// Wait for all sandboxes to be paused
 	for _, id := range sandboxIDs {
-		data, err := sandboxClient.Read(ctx, id, "/mnt/oss/oss-test.txt")
+		if err := waitForSandboxStatus(sandboxClient, ctx, id, "paused", 5*time.Minute); err != nil {
+			t.Fatalf("Sandbox %s did not reach paused: %v", id, err)
+		}
+		t.Logf("Sandbox %s is paused", id)
+	}
+
+	t.Logf("First round: batch resume")
+	resumeResp, err := sandboxClient.BatchResume(ctx, models.BatchResumeRequest{
+		SandboxIDs: sandboxIDs,
+	})
+	if err != nil {
+		t.Fatalf("BatchResume failed: %v", err)
+	}
+	t.Logf("BatchResume: total=%d, successful=%d, failed=%d", resumeResp.Total, resumeResp.Successful, resumeResp.Failed)
+
+	// Wait for all sandboxes to be running
+	for _, id := range sandboxIDs {
+		if err := waitForSandboxRunning(sandboxClient, ctx, id, 5*time.Minute); err != nil {
+			t.Fatalf("Sandbox %s did not reach running after resume: %v", id, err)
+		}
+		t.Logf("Sandbox %s is running after first resume", id)
+	}
+
+	// Verify OSS file content after first resume
+	for _, id := range sandboxIDs {
+		ossPath := batchOSSFile(id)
+		data, err := sandboxClient.Read(ctx, id, ossPath)
 		if err != nil {
 			t.Fatalf("Read OSS file failed for sandbox %s: %v", id, err)
 		}
 		if string(data) != testContent {
-			t.Errorf("OSS file content mismatch for sandbox %s", id)
+			t.Errorf("OSS file content mismatch for sandbox %s after first resume: got %s, want %s", id, string(data), testContent)
 		}
 	}
 
+	// Second round: pause -> resume -> verify
+	t.Logf("Second round: batch pause")
+	pauseResp, err = sandboxClient.BatchPause(ctx, models.BatchPauseRequest{
+		SandboxIDs: sandboxIDs,
+	})
+	if err != nil {
+		t.Fatalf("BatchPause failed: %v", err)
+	}
+	t.Logf("BatchPause: total=%d, successful=%d, failed=%d", pauseResp.Total, pauseResp.Successful, pauseResp.Failed)
+
+	// Wait for all sandboxes to be paused
+	for _, id := range sandboxIDs {
+		if err := waitForSandboxStatus(sandboxClient, ctx, id, "paused", 5*time.Minute); err != nil {
+			t.Fatalf("Sandbox %s did not reach paused: %v", id, err)
+		}
+		t.Logf("Sandbox %s is paused", id)
+	}
+
+	t.Logf("Second round: batch resume")
+	resumeResp, err = sandboxClient.BatchResume(ctx, models.BatchResumeRequest{
+		SandboxIDs: sandboxIDs,
+	})
+	if err != nil {
+		t.Fatalf("BatchResume failed: %v", err)
+	}
+	t.Logf("BatchResume: total=%d, successful=%d, failed=%d", resumeResp.Total, resumeResp.Successful, resumeResp.Failed)
+
+	// Wait for all sandboxes to be running
+	for _, id := range sandboxIDs {
+		if err := waitForSandboxRunning(sandboxClient, ctx, id, 5*time.Minute); err != nil {
+			t.Fatalf("Sandbox %s did not reach running after resume: %v", id, err)
+		}
+		t.Logf("Sandbox %s is running after second resume", id)
+	}
+
+	// Verify OSS file content after second resume
+	for _, id := range sandboxIDs {
+		ossPath := batchOSSFile(id)
+		data, err := sandboxClient.Read(ctx, id, ossPath)
+		if err != nil {
+			t.Fatalf("Read OSS file failed for sandbox %s: %v", id, err)
+		}
+		if string(data) != testContent {
+			t.Errorf("OSS file content mismatch for sandbox %s after second resume: got %s, want %s", id, string(data), testContent)
+		}
+	}
+
+	// Batch delete
 	resp, err := sandboxClient.BatchDelete(ctx, models.BatchDeleteRequest{
 		SandboxIDs: sandboxIDs,
 		Force:      boolPtr(true),

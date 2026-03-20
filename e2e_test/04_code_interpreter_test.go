@@ -17,16 +17,12 @@ import (
 func TestCodeInterpreterExecute(t *testing.T) {
 	sandboxClient := setupClient(t)
 	ctx := context.Background()
-
-	projectID := os.Getenv("SCALEBOX_PROJECT_ID")
-	if projectID == "" {
-		projectID = "prj-e2e0000000000001"
-	}
+	projectID := requireProjectID(t)
 
 	sandbox, err := sandboxClient.Create(ctx, models.CreateSandboxRequest{
 		Name:                "e2e-ci-" + strconv.FormatInt(time.Now().Unix(), 10),
 		Template:            getTestTemplate(),
-		ProjectID:          projectID,
+		ProjectID:           projectID,
 		AllowInternetAccess: boolPtr(true),
 	})
 	if err != nil {

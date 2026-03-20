@@ -18,11 +18,7 @@ import (
 func TestSandboxLifecycle(t *testing.T) {
 	sandboxClient := setupClient(t)
 	ctx := context.Background()
-
-	projectID := os.Getenv("SCALEBOX_PROJECT_ID")
-	if projectID == "" {
-		projectID = "prj-e2e0000000000001"
-	}
+	projectID := requireProjectID(t)
 
 	createReq := models.CreateSandboxRequest{
 		Name:      "e2e-crud-" + strconv.FormatInt(time.Now().Unix(), 10),
@@ -86,10 +82,12 @@ func TestSandboxLifecycle(t *testing.T) {
 func TestPauseResume(t *testing.T) {
 	sandboxClient := setupClient(t)
 	ctx := context.Background()
+	projectID := requireProjectID(t)
 
 	sandbox, err := sandboxClient.Create(ctx, models.CreateSandboxRequest{
-		Name:     shortSandboxName("e2e-pr"),
-		Template: getTestTemplate(),
+		Name:      shortSandboxName("e2e-pr"),
+		Template:  getTestTemplate(),
+		ProjectID: projectID,
 	})
 	if err != nil {
 		t.Fatalf("Create sandbox failed: %v", err)
@@ -132,11 +130,13 @@ func TestPauseResume(t *testing.T) {
 func TestSetTimeout(t *testing.T) {
 	sandboxClient := setupClient(t)
 	ctx := context.Background()
+	projectID := requireProjectID(t)
 
 	sandbox, err := sandboxClient.Create(ctx, models.CreateSandboxRequest{
-		Name:     "e2e-timeout-" + strconv.FormatInt(time.Now().Unix(), 10),
-		Template: getTestTemplate(),
-		Timeout:  300,
+		Name:      "e2e-timeout-" + strconv.FormatInt(time.Now().Unix(), 10),
+		Template:  getTestTemplate(),
+		ProjectID: projectID,
+		Timeout:   300,
 	})
 	if err != nil {
 		t.Fatalf("Create sandbox failed: %v", err)

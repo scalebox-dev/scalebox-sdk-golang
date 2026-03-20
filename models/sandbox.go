@@ -122,6 +122,22 @@ type BatchTerminateResponse struct {
 	Results    []BatchOperationItem `json:"results"`
 }
 
+// BatchPauseResponse represents the response from batch pause (matches backend BatchOperationResponse)
+type BatchPauseResponse struct {
+	Total      int                  `json:"total"`
+	Successful int                  `json:"successful"`
+	Failed     int                  `json:"failed"`
+	Results    []BatchOperationItem `json:"results"`
+}
+
+// BatchResumeResponse represents the response from batch resume (matches backend BatchOperationResponse)
+type BatchResumeResponse struct {
+	Total      int                  `json:"total"`
+	Successful int                  `json:"successful"`
+	Failed     int                  `json:"failed"`
+	Results    []BatchOperationItem `json:"results"`
+}
+
 // BatchOperationItem represents a single result in batch operations (backend BatchOperationResult)
 type BatchOperationItem struct {
 	SandboxID string  `json:"sandbox_id"`

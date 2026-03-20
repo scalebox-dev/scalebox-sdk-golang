@@ -23,10 +23,7 @@ func TestRedisTemplateImport(t *testing.T) {
 
 	// Simply try to create a sandbox with redis-e2e template to check if it exists
 	// If template doesn't exist, the create will fail and we skip
-	projectID := os.Getenv("SCALEBOX_PROJECT_ID")
-	if projectID == "" {
-		projectID = "prj-e2e0000000000001"
-	}
+	projectID := requireProjectID(t)
 
 	testSandbox, err := sandboxClient.Create(ctx, models.CreateSandboxRequest{
 		Name:      shortSandboxName("e2e-rc"),
@@ -34,7 +31,7 @@ func TestRedisTemplateImport(t *testing.T) {
 		ProjectID: projectID,
 	})
 	if err != nil {
-		t.Skipf("redis-e2e template not available: %v", err)
+		t.Fatalf("redis-e2e template not available: %v", err)
 	}
 	defer sandboxClient.Delete(ctx, testSandbox.SandboxID, nil)
 
@@ -45,11 +42,7 @@ func TestRedisTemplateImport(t *testing.T) {
 func TestRedisConnect(t *testing.T) {
 	sandboxClient := setupClient(t)
 	ctx := context.Background()
-
-	projectID := os.Getenv("SCALEBOX_PROJECT_ID")
-	if projectID == "" {
-		projectID = "prj-e2e0000000000001"
-	}
+	projectID := requireProjectID(t)
 
 	sandbox, err := sandboxClient.Create(ctx, models.CreateSandboxRequest{
 		Name:      shortSandboxName("e2e-rd"),

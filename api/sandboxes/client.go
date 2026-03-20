@@ -207,6 +207,32 @@ func (c *Client) BatchTerminate(ctx context.Context, req models.BatchTerminateRe
 	return &result, nil
 }
 
+// BatchPause pauses multiple sandboxes in one request.
+func (c *Client) BatchPause(ctx context.Context, req models.BatchPauseRequest) (*models.BatchPauseResponse, error) {
+	resp, err := c.baseClient.DoRequest(ctx, "POST", "/v1/sandboxes/batch-pause", req, nil)
+	if err != nil {
+		return nil, err
+	}
+	var result models.BatchPauseResponse
+	if err := c.baseClient.ParseResponse(resp, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// BatchResume resumes multiple sandboxes in one request.
+func (c *Client) BatchResume(ctx context.Context, req models.BatchResumeRequest) (*models.BatchResumeResponse, error) {
+	resp, err := c.baseClient.DoRequest(ctx, "POST", "/v1/sandboxes/batch-resume", req, nil)
+	if err != nil {
+		return nil, err
+	}
+	var result models.BatchResumeResponse
+	if err := c.baseClient.ParseResponse(resp, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
 // Pause pauses a sandbox. Pass opts with IsAsync: true to return immediately without waiting.
 func (c *Client) Pause(ctx context.Context, sandboxID string, opts ...*models.PauseOptions) (*models.Sandbox, error) {
 	path := fmt.Sprintf("/v1/sandboxes/%s/pause", sandboxID)

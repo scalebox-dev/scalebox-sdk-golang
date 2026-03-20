@@ -208,7 +208,7 @@ code-interpreter 模板要求内存至少 2048 MB，E2E 测试已按此配置。
 
    ```bash
    SCALEBOX_BASE_URL=http://127.0.0.1:8000
-   SCALEBOX_API_KEY=sk-e2e0root0cli0sandbox00000000000000000000
+   SCALEBOX_API_KEY=your-api-key-here
    ```
 
 3. **后端返回 503（非 nginx 页面）**

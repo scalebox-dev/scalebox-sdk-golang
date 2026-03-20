@@ -100,6 +100,16 @@ type BatchTerminateRequest struct {
 	Force      *bool    `json:"force,omitempty"`
 }
 
+// BatchPauseRequest represents a request to batch pause sandboxes
+type BatchPauseRequest struct {
+	SandboxIDs []string `json:"sandbox_ids"`
+}
+
+// BatchResumeRequest represents a request to batch resume sandboxes
+type BatchResumeRequest struct {
+	SandboxIDs []string `json:"sandbox_ids"`
+}
+
 // CreateTemplateFromSandboxRequest represents a request to create a template from a sandbox
 type CreateTemplateFromSandboxRequest struct {
 	Name        string `json:"name,omitempty"`
