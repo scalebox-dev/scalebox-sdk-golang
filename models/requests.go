@@ -55,11 +55,25 @@ type ConnectSandboxRequest struct {
 	Timeout *int `json:"timeout,omitempty"` // Optional timeout in seconds - if provided, must be valid and will update sandbox timeout
 }
 
-// PauseSandboxRequest represents a request to pause a sandbox (empty struct)
-type PauseSandboxRequest struct{}
+// PauseSandboxRequest represents a request to pause a sandbox
+type PauseSandboxRequest struct {
+	IsAsync *bool `json:"is_async,omitempty"` // if true, return immediately without waiting for pause completion
+}
 
-// ResumeSandboxRequest represents a request to resume a sandbox (empty struct)
-type ResumeSandboxRequest struct{}
+// PauseOptions holds optional parameters for Pause
+type PauseOptions struct {
+	IsAsync bool
+}
+
+// ResumeSandboxRequest represents a request to resume a sandbox
+type ResumeSandboxRequest struct {
+	IsAsync *bool `json:"is_async,omitempty"` // if true, return immediately without waiting for resume completion
+}
+
+// ResumeOptions holds optional parameters for Resume
+type ResumeOptions struct {
+	IsAsync bool
+}
 
 // ListSandboxesOptions represents options for listing sandboxes
 type ListSandboxesOptions struct {
@@ -71,6 +85,44 @@ type ListSandboxesOptions struct {
 	SortOrder   string
 	Limit       int
 	Offset      int
+	Page        int // 1-based page (takes precedence over Offset when > 0)
+}
+
+// BatchDeleteRequest represents a request to batch delete sandboxes
+type BatchDeleteRequest struct {
+	SandboxIDs []string `json:"sandbox_ids"`
+	Force      *bool    `json:"force,omitempty"`
+}
+
+// BatchTerminateRequest represents a request to batch terminate sandboxes
+type BatchTerminateRequest struct {
+	SandboxIDs []string `json:"sandbox_ids"`
+	Force      *bool    `json:"force,omitempty"`
+}
+
+// BatchPauseRequest represents a request to batch pause sandboxes
+type BatchPauseRequest struct {
+	SandboxIDs []string `json:"sandbox_ids"`
+}
+
+// BatchResumeRequest represents a request to batch resume sandboxes
+type BatchResumeRequest struct {
+	SandboxIDs []string `json:"sandbox_ids"`
+}
+
+// CreateTemplateFromSandboxRequest represents a request to create a template from a sandbox
+type CreateTemplateFromSandboxRequest struct {
+	Name        string `json:"name,omitempty"`
+	Description string `json:"description,omitempty"`
+}
+
+// AddPortRequest represents a request to add a port to a sandbox
+type AddPortRequest struct {
+	Port        int32  `json:"port"`
+	ServicePort int32  `json:"service_port,omitempty"`
+	Protocol    string `json:"protocol,omitempty"`
+	Name        string `json:"name,omitempty"`
+	IsProtected bool   `json:"is_protected"`
 }
 
 // GetSandboxMetricsOptions represents options for getting sandbox metrics

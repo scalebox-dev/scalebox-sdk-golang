@@ -2,11 +2,13 @@ package client
 
 // Error types
 var (
-	ErrNotFound      = &APIError{StatusCode: 404, Message: "Resource not found"}
-	ErrUnauthorized  = &APIError{StatusCode: 401, Message: "Unauthorized"}
-	ErrForbidden     = &APIError{StatusCode: 403, Message: "Forbidden"}
-	ErrBadRequest    = &APIError{StatusCode: 400, Message: "Bad request"}
-	ErrInternalError = &APIError{StatusCode: 500, Message: "Internal server error"}
+	ErrNotFound       = &APIError{StatusCode: 404, Message: "Resource not found"}
+	ErrUnauthorized   = &APIError{StatusCode: 401, Message: "Unauthorized"}
+	ErrForbidden      = &APIError{StatusCode: 403, Message: "Forbidden"}
+	ErrBadRequest     = &APIError{StatusCode: 400, Message: "Bad request"}
+	ErrInternalError  = &APIError{StatusCode: 500, Message: "Internal server error"}
+	ErrRateLimited    = &APIError{StatusCode: 429, Message: "Rate limited"}
+	ErrTimeout        = &APIError{StatusCode: 408, Message: "Request timeout"}
 )
 
 // IsNotFound checks if the error is a 404 Not Found error
@@ -39,4 +41,20 @@ func StatusCode(err error) int {
 		return apiErr.StatusCode
 	}
 	return 0
+}
+
+// IsRateLimited checks if the error is a 429 Rate Limited error
+func IsRateLimited(err error) bool {
+	if apiErr, ok := err.(*APIError); ok {
+		return apiErr.StatusCode == 429
+	}
+	return false
+}
+
+// IsTimeout checks if the error indicates a timeout (408 or context.DeadlineExceeded)
+func IsTimeout(err error) bool {
+	if apiErr, ok := err.(*APIError); ok {
+		return apiErr.StatusCode == 408
+	}
+	return false
 }

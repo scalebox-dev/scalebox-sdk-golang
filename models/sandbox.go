@@ -82,11 +82,11 @@ type Resources struct {
 
 // PortConfig represents a port configuration
 type PortConfig struct {
-	Port        int32  `json:"port"`
-	ServicePort int32  `json:"service_port,omitempty"`
-	Protocol    string `json:"protocol,omitempty"`
-	Name        string `json:"name,omitempty"`
-	IsProtected bool   `json:"is_protected"`
+	Port        interface{} `json:"port"` // API may return int or object
+	ServicePort int32       `json:"service_port,omitempty"`
+	Protocol    string      `json:"protocol,omitempty"`
+	Name        string      `json:"name,omitempty"`
+	IsProtected bool        `json:"is_protected"`
 }
 
 // SandboxStatus represents lightweight sandbox status
@@ -100,7 +100,61 @@ type SandboxStatus struct {
 
 // SandboxListResponse represents the response from listing sandboxes
 type SandboxListResponse struct {
-	Sandboxes []Sandbox `json:"sandboxes"`
+	Sandboxes  []Sandbox `json:"sandboxes"`
+	Page       int       `json:"page,omitempty"`
+	Total      int       `json:"total,omitempty"`
+	TotalPages int       `json:"total_pages,omitempty"`
+}
+
+// BatchDeleteResponse represents the response from batch delete (matches backend BatchOperationResponse)
+type BatchDeleteResponse struct {
+	Total      int                  `json:"total"`
+	Successful int                  `json:"successful"`
+	Failed     int                  `json:"failed"`
+	Results    []BatchOperationItem `json:"results"`
+}
+
+// BatchTerminateResponse represents the response from batch terminate (matches backend BatchOperationResponse)
+type BatchTerminateResponse struct {
+	Total      int                  `json:"total"`
+	Successful int                  `json:"successful"`
+	Failed     int                  `json:"failed"`
+	Results    []BatchOperationItem `json:"results"`
+}
+
+// BatchPauseResponse represents the response from batch pause (matches backend BatchOperationResponse)
+type BatchPauseResponse struct {
+	Total      int                  `json:"total"`
+	Successful int                  `json:"successful"`
+	Failed     int                  `json:"failed"`
+	Results    []BatchOperationItem `json:"results"`
+}
+
+// BatchResumeResponse represents the response from batch resume (matches backend BatchOperationResponse)
+type BatchResumeResponse struct {
+	Total      int                  `json:"total"`
+	Successful int                  `json:"successful"`
+	Failed     int                  `json:"failed"`
+	Results    []BatchOperationItem `json:"results"`
+}
+
+// BatchOperationItem represents a single result in batch operations (backend BatchOperationResult)
+type BatchOperationItem struct {
+	SandboxID string  `json:"sandbox_id"`
+	Status    string  `json:"status"` // "success" or "error"
+	Error     *string `json:"error,omitempty"`
+}
+
+// BatchOpFailure is deprecated; use BatchOperationItem for batch responses
+type BatchOpFailure struct {
+	SandboxID string `json:"sandbox_id"`
+	Error     string `json:"error"`
+}
+
+// CreateTemplateResponse represents the response from creating a template from a sandbox
+type CreateTemplateResponse struct {
+	TemplateID   string `json:"template_id"`
+	TemplateName string `json:"name"` // backend returns "name"
 }
 
 // DeletionResponse represents the response from deleting a sandbox
