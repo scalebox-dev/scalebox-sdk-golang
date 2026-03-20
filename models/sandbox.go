@@ -82,11 +82,11 @@ type Resources struct {
 
 // PortConfig represents a port configuration
 type PortConfig struct {
-	Port        int32  `json:"port"`
-	ServicePort int32  `json:"service_port,omitempty"`
-	Protocol    string `json:"protocol,omitempty"`
-	Name        string `json:"name,omitempty"`
-	IsProtected bool   `json:"is_protected"`
+	Port        interface{} `json:"port"` // API may return int or object
+	ServicePort int32       `json:"service_port,omitempty"`
+	Protocol    string      `json:"protocol,omitempty"`
+	Name        string      `json:"name,omitempty"`
+	IsProtected bool        `json:"is_protected"`
 }
 
 // SandboxStatus represents lightweight sandbox status

@@ -763,6 +763,98 @@ func (c *Client) GetMetrics(ctx context.Context, sandboxID string, opts *models.
 	return &result, nil
 }
 
+// ListTemplates returns a list of available templates
+func (c *Client) ListTemplates(ctx context.Context, opts *ListTemplatesOptions) (*models.TemplateListResponse, error) {
+	queryParams := make(map[string]string)
+	if opts != nil {
+		if opts.Page > 0 {
+			queryParams["page"] = strconv.Itoa(opts.Page)
+		}
+		if opts.Limit > 0 {
+			queryParams["limit"] = strconv.Itoa(opts.Limit)
+		}
+		if opts.Status != "" {
+			queryParams["status"] = opts.Status
+		}
+	}
+
+	resp, err := c.baseClient.DoRequest(ctx, "GET", "/v1/templates", nil, queryParams)
+	if err != nil {
+		return nil, err
+	}
+
+	var result models.TemplateListResponse
+	if err := c.baseClient.ParseResponse(resp, &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+// ListTemplatesOptions represents options for listing templates
+type ListTemplatesOptions struct {
+	Page   int
+	Limit  int
+	Status string
+}
+
+// GetTemplate returns a template by ID
+func (c *Client) GetTemplate(ctx context.Context, templateID string) (*models.Template, error) {
+	path := fmt.Sprintf("/v1/templates/%s", templateID)
+	resp, err := c.baseClient.DoRequest(ctx, "GET", path, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var result models.Template
+	if err := c.baseClient.ParseResponse(resp, &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+// ImportTemplate imports a template from an external image
+func (c *Client) ImportTemplate(ctx context.Context, req models.ImportTemplateRequest) (*models.ImportTemplateResponse, error) {
+	resp, err := c.baseClient.DoRequest(ctx, "POST", "/v1/templates/import", req, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var result models.ImportTemplateResponse
+	if err := c.baseClient.ParseResponse(resp, &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+// GetImportJob returns the status of an import job
+func (c *Client) GetImportJob(ctx context.Context, jobID string) (*models.GetImportJobResponse, error) {
+	path := fmt.Sprintf("/v1/import-jobs/%s", jobID)
+	resp, err := c.baseClient.DoRequest(ctx, "GET", path, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var result models.GetImportJobResponse
+	if err := c.baseClient.ParseResponse(resp, &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+// DeleteTemplate deletes a template by ID
+func (c *Client) DeleteTemplate(ctx context.Context, templateID string) error {
+	path := fmt.Sprintf("/v1/templates/%s", templateID)
+	resp, err := c.baseClient.DoRequest(ctx, "DELETE", path, nil, nil)
+	if err != nil {
+		return err
+	}
+	return c.baseClient.ParseResponse(resp, nil)
+}
+
 // formatTime formats time for API query parameters
 // Supports Unix timestamp, RFC3339, and simple datetime formats
 func formatTime(t time.Time) string {

@@ -317,3 +317,18 @@ type APIError struct {
 func (e *APIError) Error() string {
 	return fmt.Sprintf("API error (status %d): %s", e.StatusCode, e.Message)
 }
+
+// Health checks if the backend is healthy by calling GET /health
+func (c *Client) Health(ctx context.Context) error {
+	resp, err := c.DoRequest(ctx, "GET", "/health", nil, nil)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return &APIError{
+			StatusCode: resp.StatusCode,
+			Message:    fmt.Sprintf("health check failed with status %d", resp.StatusCode),
+		}
+	}
+	return nil
+}
